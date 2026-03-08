@@ -110,16 +110,16 @@ CMD ["python","app.py"]
 
         await new Promise((resolve, reject) => {
 
-            const run = spawn("docker", [
-                "run",
-                "-d",
-                "-p",
-                "3000:3000",
-                "--name",
-                containerName,
-                imageName
-            ]);
-
+           const run = spawn("sudo", [
+    "docker",
+    "run",
+    "-d",
+    "-p",
+    "3000:3000",
+    "--name",
+    containerName,
+    imageName
+]);
             run.stdout.on("data", (data) => {
                 console.log(`container started: ${data}`);
             });
