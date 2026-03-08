@@ -115,7 +115,7 @@ CMD ["python","app.py"]
     "run",
     "-d",
     "-p",
-    "3000:3000",
+    "3001:3000",
     "--name",
     containerName,
     imageName
