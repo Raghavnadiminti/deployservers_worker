@@ -79,13 +79,13 @@ CMD ["python","app.py"]
 
         await new Promise((resolve, reject) => {
 
-            const build = spawn("docker", [
-                "build",
-                "-t",
-                imageName,
-                repoPath
-            ]);
-
+         const build = spawn("sudo", [
+    "docker",
+    "build",
+    "-t",
+    imageName,
+    repoPath
+]);
             build.stdout.on("data", (data) => {
                 console.log(`docker build: ${data}`);
             });
