@@ -1,11 +1,9 @@
 const express = require("express");
-const deployRepo = require("../controllers/deploy");
+const deployQueue = require("../Queue/queue");
 
 const deployrouter = express.Router();
 
-
 deployrouter.post("/clone", async (req, res) => {
-
     try {
         const { user, repoFullName, branch, token } = req.body;
 
@@ -15,30 +13,37 @@ deployrouter.post("/clone", async (req, res) => {
             });
         }
 
-      
-        const deployment = await deployRepo(
-            repoFullName,
-            branch,
-            token
+     
+        const job = await deployQueue.add(
+            "deploy",
+            {
+                user,
+                repoFullName,
+                branch,
+                token
+            },
+            {
+                attempts: 3,
+                backoff: {
+                    type: "exponential",
+                    delay: 5000
+                }
+            }
         );
 
+        
         res.json({
-            message: "Deployment successful",
-            repoPath: deployment.repoPath,
-            imageName: deployment.imageName,
-            containerName: deployment.containerName
+            message: "Deployment started",
+            jobId: job.id
         });
 
     } catch (err) {
-
-        console.error("Deployment error:", err);
+        console.error("Queue error:", err);
 
         res.status(500).json({
-            error: "Deployment failed"
+            error: "Failed to start deployment"
         });
-
     }
-
 });
 
 module.exports = deployrouter;

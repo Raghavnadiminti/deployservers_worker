@@ -8,13 +8,7 @@ async function createContainer({ repoFullName}) {
         if (!project) {
             throw new Error("Project not found");
         }
-
-       
         const containerName = `${project.repoName}-${Date.now()}`;
-
-       
-      
-
         const container = await Container.create({
             project: project._id,
             containerName,
@@ -29,4 +23,5 @@ async function createContainer({ repoFullName}) {
         throw err;
     }
 }
+
 module.exports={createContainer}

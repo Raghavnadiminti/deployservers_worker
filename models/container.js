@@ -17,7 +17,7 @@ const containerSchema = new mongoose.Schema(
     containerName: {
       type: String,
       required: true,
-      unique: true, // 🔥 important now
+      unique: true, 
     },
 
     internalPort: {
