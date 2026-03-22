@@ -1,34 +1,37 @@
 const fs = require("fs");
 const path = require("path");
 const { spawn } = require("child_process");
-
-const {createNodeDockerfile,detectProjectType} = require("./detect");
+const Container = require("../models/container");
+const Project = require("../models/project");
+const { detectProjectType } = require("./detect");
 const cloneRepoTemp = require("./gitclone");
+const { createContainer } = require("./assign");
 
-async function deployRepo(repoFullName, branch, token) {
 
-    try {
+function detectProject(repoPath) {
+    const projectType = detectProjectType(repoPath);
 
-        console.log("request reached me ")
-        const repoPath = await cloneRepoTemp(repoFullName, branch, token);
+    if (!projectType) {
+        throw new Error("Could not detect project type");
+    }
 
-        console.log("Repo cloned at:", repoPath);
+    console.log("Detected project:", projectType);
+    return projectType;
+}
 
- 
-        const projectType = detectProjectType(repoPath);
 
-        console.log("Detected project:", projectType);
+function writeDockerfile(repoPath, projectType) {
+    const dockerfilePath = path.join(repoPath, "Dockerfile");
 
-  
-        const dockerfilePath = path.join(repoPath, "Dockerfile");
+    if (fs.existsSync(dockerfilePath)) {
+        console.log("Dockerfile already exists");
+        return;
+    }
 
-        if (!fs.existsSync(dockerfilePath)) {
+    let dockerContent = "";
 
-            let dockerContent = "";
-
-            if (projectType === "node") {
-
-                dockerContent = `
+    if (projectType === "node") {
+        dockerContent = `
 FROM node:18
 
 WORKDIR /app
@@ -41,12 +44,9 @@ EXPOSE 3000
 
 CMD ["node","index.js"]
 `;
-
-            }
-
-            else if (projectType === "python") {
-
-                dockerContent = `
+    } 
+    else if (projectType === "python") {
+        dockerContent = `
 FROM python:3.11
 
 WORKDIR /app
@@ -59,33 +59,40 @@ EXPOSE 3000
 
 CMD ["python","app.py"]
 `;
+    } 
+    else {
+        throw new Error("Unsupported project type");
+    }
 
-            }
+    fs.writeFileSync(dockerfilePath, dockerContent);
+    console.log("Dockerfile generated");
+}
 
-            else {
 
-                throw new Error("Unsupported project type");
+async function deployRepo(repoFullName, branch, token) {
+    try {
+        console.log("Request received");
 
-            }
+       
+        const repoPath = await cloneRepoTemp(repoFullName, branch, token);
+        console.log("Repo cloned at:", repoPath);
 
-            fs.writeFileSync(dockerfilePath, dockerContent);
+      
+        const projectType = detectProject(repoPath);
+        writeDockerfile(repoPath, projectType);
 
-            console.log("Dockerfile generated");
-
-        }
-
-  
         const imageName = `deploy-${Date.now()}`;
 
+       
         await new Promise((resolve, reject) => {
+            const build = spawn("sudo", [
+                "docker",
+                "build",
+                "-t",
+                imageName,
+                repoPath
+            ]);
 
-         const build = spawn("sudo", [
-    "docker",
-    "build",
-    "-t",
-    imageName,
-    repoPath
-]);
             build.stdout.on("data", (data) => {
                 console.log(`docker build: ${data}`);
             });
@@ -95,46 +102,62 @@ CMD ["python","app.py"]
             });
 
             build.on("close", (code) => {
-
                 if (code === 0) resolve();
                 else reject("Docker build failed");
-
             });
-
         });
 
         console.log("Docker image built");
 
-   
-        const containerName = `container-${Date.now()}`;
+        
+        const containerDoc = await createContainer({ repoFullName });
 
+        const containerName = containerDoc.containerName;
+
+        let dockerContainerId = "";
+
+    
         await new Promise((resolve, reject) => {
+            const run = spawn("sudo", [
+                "docker",
+                "run",
+                "-d",
+                "--name",
+                containerName,
+                "--network",
+                "mynet",
+                imageName
+            ]);
 
-           const run = spawn("sudo", [
-    "docker",
-    "run",
-    "-d",
-    "-p",
-    "3001:3000",
-    "--name",
-    containerName,
-    imageName
-]);
             run.stdout.on("data", (data) => {
-                console.log(`container started: ${data}`);
+                dockerContainerId += data.toString().trim(); 
             });
 
             run.stderr.on("data", (data) => {
                 console.log(`container error: ${data}`);
             });
 
-            run.on("close", (code) => {
+            run.on("close", async (code) => {
+                if (code === 0) {
+                    try {
+                      
+                        await Container.findByIdAndUpdate(
+                            containerDoc._id,
+                            {
+                                containerId: dockerContainerId,
+                                status: "running",
+                                lastStartedAt: new Date()
+                            }
+                        );
 
-                if (code === 0) resolve();
-                else reject("Container run failed");
-
+                        resolve();
+                    } catch (err) {
+                        reject("DB update failed");
+                    }
+                } else {
+                    reject("Container run failed");
+                }
             });
-
         });
 
         console.log("Deployment successful");
@@ -142,16 +165,28 @@ CMD ["python","app.py"]
         return {
             repoPath,
             imageName,
-            containerName
+            containerName,
+            containerId: dockerContainerId
         };
 
     } catch (err) {
-
         console.error("Deployment failed:", err);
+
+       
+        if (repoFullName) {
+            try {
+                const project = await Project.findOne({ repoFullName });
+                if (project) {
+                    await Container.findOneAndUpdate(
+                        { project: project._id },
+                        { status: "failed" }
+                    );
+                }
+            } catch (e) {}
+        }
+
         throw err;
-
     }
-
 }
 
 module.exports = deployRepo;
