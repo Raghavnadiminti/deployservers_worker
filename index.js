@@ -27,10 +27,19 @@ app.get('/',(req,res)=>{
   res.send("server running eew")
 })
 
-await connectDB()
+
 
 const PORT = process.env.PORT || 3000;
+async function start() {
 
+    await connectDB();
+
+    console.log("DB connected");
+
+    
+}
+
+start();
 app.listen(PORT, () => {
   console.log(` Server running on port ${PORT}`);
 });
