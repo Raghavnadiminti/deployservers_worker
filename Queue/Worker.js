@@ -17,3 +17,5 @@ const worker = new Worker(
         }
     }
 );
+
+module.exports = worker 
