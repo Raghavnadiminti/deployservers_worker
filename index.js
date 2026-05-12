@@ -5,7 +5,7 @@ const cors = require("cors");
 
 const router = require('./routes/clonerepo')
 const worker = require('./Queue/Worker')
-
+const connectDB = require('./config/db')
 const app = express();
 
 
@@ -27,7 +27,7 @@ app.get('/',(req,res)=>{
   res.send("server running eew")
 })
 
-
+await connectDB()
 
 const PORT = process.env.PORT || 3000;
 
