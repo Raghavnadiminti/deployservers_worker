@@ -39,3 +39,4 @@ const containerSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+module.exports = mongoose.model("container", containerSchema);
