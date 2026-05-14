@@ -43,6 +43,11 @@ const projectSchema = new mongoose.Schema(
     lastDeployedCommit: {
       type: String,
     },
+     status:{
+      type: String,
+      enum: ["running", "stopped", "failed", "starting"],
+      default: "starting",
+    }
   },
   { timestamps: true }
 );

@@ -167,6 +167,14 @@ async function deployRepo(repoFullName, branch, token) {
                                 lastStartedAt: new Date()
                             }
                         );
+                        const project =
+                await Project.findOneAndUpdate(
+                    { repoFullName },
+                    { status: "running" },
+                    { new: true }
+                    );
+
+                console.log(project.status);
 
                         resolve();
                     } catch (err) {
