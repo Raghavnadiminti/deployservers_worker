@@ -113,22 +113,40 @@ async function deployRepo(repoFullName, branch, token) {
         const containerDoc = await createContainer({ repoFullName });
         
         const containerName = containerDoc.containerName;
+        const projectSlug = repoFullName.toLowerCase().replace("/", "-");
+        console.log("slug",projectSlug)
 
         let dockerContainerId = "";
 
     
         await new Promise((resolve, reject) => {
-            const run = spawn("sudo", [
-                "docker",
-                "run",
-                "-d",
-                "--name",
-                containerName,
-                "--network",
-                "mynet",
-                imageName
-            ]);
+           const run = spawn("sudo", [
+    "docker",
+    "run",
+    "-d",
+    "--name",
+    containerName,
 
+    "--network",
+    "mynet",
+
+    "--label",
+    "traefik.enable=true",
+
+    "--label",
+    `traefik.http.routers.${containerName}.rule=PathPrefix(\`/${projectSlug}\`)`,
+
+    "--label",
+    `traefik.http.services.${containerName}.loadbalancer.server.port=3000`,
+
+    "--label",
+    `traefik.http.middlewares.${containerName}-strip.stripprefix.prefixes=/${projectSlug}`,
+
+    "--label",
+    `traefik.http.routers.${containerName}.middlewares=${containerName}-strip`,
+
+    imageName
+]);
             run.stdout.on("data", (data) => {
                 dockerContainerId += data.toString().trim(); 
             });
