@@ -9,6 +9,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "bullmq": "^5.76.8",
     "child_process": "^1.0.2",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
