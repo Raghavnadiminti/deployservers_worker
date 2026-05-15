@@ -6,6 +6,7 @@ const Project = require("../models/project");
 const { detectProjectType } = require("./detect");
 const cloneRepoTemp = require("./gitclone");
 const { createContainer } = require("./assign");
+const getPublicIP = require('./dynamics')
 
 
 function detectProject(repoPath) {
@@ -115,6 +116,8 @@ async function deployRepo(repoFullName, branch, token) {
         const containerName = containerDoc.containerName;
         const projectSlug = repoFullName.toLowerCase().replace("/", "-");
         console.log("slug",projectSlug)
+        const publicIP=await getPublicIP()
+        const deployedUrl =`http://${publicIP}/${projectSlug}`;
 
         let dockerContainerId = "";
 
@@ -170,7 +173,7 @@ async function deployRepo(repoFullName, branch, token) {
                         const project =
                 await Project.findOneAndUpdate(
                     { repoFullName },
-                    { status: "running" },
+                    { status: "running" ,url:deployedUrl},
                     { new: true }
                     );
 
